@@ -121,6 +121,8 @@ def create_release_branch(version):
     Checks if a release branch with the specified version exists. If not, creates it from the 'development' branch.
 
     Args: version: The version number to check for.
+
+    Returns: Branch title
     """
 
     try:
@@ -134,11 +136,14 @@ def create_release_branch(version):
             return
 
         # Create the release branch from 'development'
-        subprocess.run(["git", "checkout", "-b", f"release/v{version}"], check=True)
-        print(f"Created release branch 'release/v{version}'")
+        branch_title = f"release/v{version}"
+        subprocess.run(["git", "checkout", "-b", branch_title], check=True)
+        print(f"Created release branch '{branch_title}'")
+        return branch_title
 
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+        return None
 
 def replace_konsist_version(old_version, new_version, files):
     """
@@ -208,8 +213,18 @@ def create_pull_request_to_main(version):
         subprocess.run(["git", "push", "--set-upstream", "origin", "HEAD"], check=True)
 
         # Create the pull request using the GitHub CLI
-        subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--base", "main"], check=True)
+        subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--body", "",  "--base", "main"], check=True)
 
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def check_github_checks(branch_title):
+    """
+    Checks the status of GitHub checks for a given repository.
+    """
+
+    try:
+        subprocess.run(["gh", "pr", "checks", f"{branch_title}", "--watch"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -243,7 +258,7 @@ def create_release():
     # else:
     #     print("There are no uncommitted changes. Script continues...")
     #
-    # create_release_branch(new_konsist_version)
+    release_branch_title = create_release_branch(new_konsist_version)
     #
     # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
     #
@@ -261,6 +276,7 @@ def create_release():
     #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
 
     create_pull_request_to_main(new_konsist_version)
+    check_github_checks(release_branch_title)
 
 # Script ===============================================================================================================
 create_release()
