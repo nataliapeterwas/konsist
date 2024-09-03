@@ -338,14 +338,15 @@ def create_release():
     while True:
         # Get latest commit SHA
         latest_commit_sha = get_latest_commit_sha(release_branch_title)
+        print(f"Latest commit SHA: {latest_commit_sha}")
 
         if not latest_commit_sha:
             print(f"{datetime.now().strftime('%H:%M:%S')}: Error fetching commit SHA, retrying in a minute.")
             time.sleep(60)
             continue
 
-        print(f"Latest commit SHA: {latest_commit_sha}")
         # Check GitHub checks
+        time.sleep(30)
         all_passed = check_github_checks(latest_commit_sha)
 
         if all_passed:
