@@ -2,8 +2,8 @@ import json
 import os
 import re
 import subprocess
-import sys
-import time
+import tempfile
+import shutil
 
 from common import (project_root)
 
@@ -13,6 +13,8 @@ read_me_file = os.path.join(project_root, "README.md")
 files_with_version_to_change = [gradle_properties_file, read_me_file]
 
 api_directory = 'lib/src/main/kotlin/com/lemonappdev/konsist/api'
+
+konsist_documentation_repository_address = "LemonAppDev/konsist-documentation"
 
 # Methods ==============================================================================================================
 def choose_release_option():
@@ -295,7 +297,7 @@ def check_github_checks(ref):
         print(f"An error occurred while checking the GitHub checks: {e}")
         return None
 
-def merge_pr(branch_name):
+def merge_release_pr(branch_name):
     """Merges a pull request from the given branch using GitHub CLI without squashing.
 
     Args: branch_name (str): The name of the branch to merge.
@@ -310,83 +312,213 @@ def merge_pr(branch_name):
 
     print(f"Successfully merged branch '{branch_name}'.")
 
+def generate_release_notes(tag_name):
+    """
+    Generate release notes for a specific tag in a GitHub repository using GitHub CLI.
+
+    :param tag_name: The tag name for which to generate release notes
+    :return: The release notes as a string or an error message
+    """
+    try:
+        # Run GitHub CLI command to fetch release notes for a specific tag
+        result = subprocess.run(
+            ['gh', 'release', 'view', tag_name, '--json', 'body', '--jq', '.body'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Check if the command was successful
+        if result.returncode != 0:
+            return f"Error fetching release notes: {result.stderr.strip()}"
+
+        # Return the release notes as a string
+        return result.stdout.strip()
+
+    except Exception as e:
+        return f"An error occurred while generating release notes: {e}"
+
+def create_github_release(version):
+    """Creates a new GitHub release with the given version number.
+
+    Args: version (str): The version number for the release.
+
+    Returns: str: The generated release notes.
+    """
+
+    # Set tag and release title
+    tag = f"v{version}"
+    release_title = f"v{version}"
+
+    # Create the GitHub release
+    subprocess.run(["gh", "release", "create", tag, "--title", release_title, "--generate-notes"], check=True)
+
+    # Format release notes
+    generated_release_notes = generate_release_notes(tag)
+    updated_release_notes = format_and_update_github_release_notes(generated_release_notes)
+
+    # Update the GitHub release
+    subprocess.run(["gh", "release", "edit", tag, "--notes", updated_release_notes], check=True)
+
+def format_and_update_github_release_notes(release_notes):
+    print(release_notes)
+    return "******Updated Release Notes******"
+
+# needed ????
+def create_or_checkout_git_branch(branch, temp_dir):
+    try:
+        result = subprocess.run(["git", "rev-parse", "--verify", branch], cwd=temp_dir, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            create_branch_result = subprocess.run(["git", "checkout", "-b", branch], cwd=temp_dir,
+                                                  stderr=subprocess.PIPE)
+            if create_branch_result.returncode != 0:
+                print(f"Error creating branch '{branch}': {create_branch_result.stderr.decode().strip()}")
+                return False
+        else:
+            checkout_result = subprocess.run(["git", "checkout", branch], cwd=temp_dir, stderr=subprocess.PIPE)
+            if checkout_result.returncode != 0:
+                print(f"Error checking out branch '{branch}': {checkout_result.stderr.decode().strip()}")
+                return False
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error running Git command: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return False
+
+def update_version_in_konsist_documentation(repository, old_version, new_version):
+    """Clones a Git repository, creates a branch, updates version numbers in Markdown files, and creates a pull request.
+
+    Args:
+        repository (str): The URL of the Git repository.
+        old_version (str): The old version number to replace.
+        new_version (str): The new version number to replace with.
+    """
+
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        subprocess.run(["gh", "repo", "clone", repository, temp_dir])
+        subprocess.run(["git", "fetch"], cwd=temp_dir)
+
+        branch_name = f"update_konsist_version_to_{new_version}"
+
+        if not create_or_checkout_git_branch(branch_name, temp_dir):
+            return None
+
+        # Update version numbers in Markdown files
+        for root, dirs, files in os.walk("."):
+            for file in files:
+                if file.endswith(".md"):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, "r+") as f:
+                        content = f.read()
+                        content = content.replace(old_version, new_version)
+                        f.seek(0)
+                        f.write(content)
+                        f.truncate()
+
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", "Update version"], check=True)
+        subprocess.run(["git", "push", "origin", branch_name], check=True)
+
+        pr_title = f"Update Konsist version: {old_version} -> {new_version}"
+        os.system("gh pr create --title '" + pr_title + "' --body '""'")
+        # os.system("gh pr merge --merge --delete-branch")
+        return temp_dir
+    except subprocess.CalledProcessError as e:
+        print(f"Error running Git command: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # Cleanup: Remove the temporary directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
 def create_release():
-    # chosen_option = 1  # remove!!!
+    chosen_option = 1  # remove!!!
 
-    chosen_option = choose_release_option()
-    print(f"You chose option: {chosen_option}")
-
+    # chosen_option = choose_release_option()
+    # print(f"You chose option: {chosen_option}")
+    #
     old_konsist_version = get_old_konsist_version()
-    print(f"Old konsist version: {old_konsist_version}")
-
-    # Check if old version is None
-    if old_konsist_version is None:
-        print("Error: Unable to determine old version from `gradle.properties`.")
-        return
-
+    # print(f"Old konsist version: {old_konsist_version}")
+    #
+    # # Check if old version is None
+    # if old_konsist_version is None:
+    #     print("Error: Unable to determine old version from `gradle.properties`.")
+    #     return
+    #
     new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
-    print(f"New konsist version: {new_konsist_version}")
+    # print(f"New konsist version: {new_konsist_version}")
+    #
+    # # Check if new version is None
+    # if new_konsist_version is None:
+    #     print("Error: Unable to determine new version.")
+    #     return
+    #
+    # change_branch_and_merge()
+    #
+    # if check_for_uncommitted_changes():
+    #     print("Error: There are uncommitted changes. Please commit or stash them before merging.")
+    #     return
+    # else:
+    #     print("There are no uncommitted changes. Script continues...")
+    #
+    # release_branch_title = create_release_branch(new_konsist_version)
+    #
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+    #
+    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
+    #
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"Remove deprecated declarations in the above files.")
+    #     return
+    # else:
+    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+    #
+    # create_pull_request_to_main(new_konsist_version)
+    #
+    # # # Execute if all GitHub checks have passed
+    # # while True:
+    # #     # Get latest commit SHA
+    # #     latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    # #     print(f"Latest commit SHA: {latest_commit_sha}")
+    # #
+    # #     time.sleep(30)
+    # #     print(f"Wait for running checks...")
+    # #
+    # #     if not latest_commit_sha:
+    # #         print(f"Error fetching commit SHA.")
+    # #         break
+    # #
+    # #     # Check GitHub checks
+    # #     check_statuses = check_github_checks(latest_commit_sha)
+    # #
+    # #     # Determine the status of the checks
+    # #     if -1 in check_statuses:
+    # #         print(f"The checks failed. Exiting script.")
+    # #         sys.exit()
+    # #
+    # #     if 0 in check_statuses:
+    # #         print(f"Checks in progress...")
+    # #         time.sleep(60)  # Wait a minute before checking again
+    # #         continue
+    # #
+    # #     if all(status == 1 for status in check_statuses):
+    # #         print(f"All checks passed. Continuing script execution.")
+    # #         # Add your script logic here
+    # #         break  # Exit the loop if all checks passed
+    #
+    # merge_pr(release_branch_title)
+    #
+    # create_github_release(new_konsist_version)
 
-    # Check if new version is None
-    if new_konsist_version is None:
-        print("Error: Unable to determine new version.")
-        return
-
-    change_branch_and_merge()
-
-    if check_for_uncommitted_changes():
-        print("Error: There are uncommitted changes. Please commit or stash them before merging.")
-        return
-    else:
-        print("There are no uncommitted changes. Script continues...")
-
-    release_branch_title = create_release_branch(new_konsist_version)
-
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-
-    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"Remove deprecated declarations in the above files.")
-        return
-    else:
-        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
-
-    create_pull_request_to_main(new_konsist_version)
-
-    # Execute if all GitHub checks have passed
-    while True:
-        # Get latest commit SHA
-        latest_commit_sha = get_latest_commit_sha(release_branch_title)
-        print(f"Latest commit SHA: {latest_commit_sha}")
-
-        if not latest_commit_sha:
-            print(f"Error fetching commit SHA.")
-            break
-
-        # Check GitHub checks
-        check_statuses = check_github_checks(latest_commit_sha)
-
-        # Determine the status of the checks
-        if -1 in check_statuses:
-            print(f"The checks failed. Exiting script.")
-            sys.exit()
-
-        if 0 in check_statuses:
-            print(f"Checks in progress...")
-            time.sleep(60)  # Wait a minute before checking again
-            continue
-
-        if all(status == 1 for status in check_statuses):
-            print(f"All checks passed. Continuing script execution.")
-            # Add your script logic here
-            break  # Exit the loop if all checks passed
-
-    merge_pr(release_branch_title)
+    update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
 # Script ===============================================================================================================
 create_release()
