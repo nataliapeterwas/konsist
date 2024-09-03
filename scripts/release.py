@@ -4,6 +4,7 @@ import re
 import subprocess
 import tempfile
 import shutil
+import time
 
 from common import (project_root)
 
