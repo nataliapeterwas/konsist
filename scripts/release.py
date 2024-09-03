@@ -102,7 +102,7 @@ def change_branch_and_merge():
         print("Pulled changes")
 
         # Merge 'main' into 'develop'
-        subprocess.run(["git", "merge", "main"], check=True)
+        subprocess.run(["git", "merge", "main", "--no-commit"], check=True)
         print("Merged 'main' into 'develop'")
 
     except subprocess.CalledProcessError as e:
