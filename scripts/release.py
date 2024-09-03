@@ -333,31 +333,31 @@ def create_release():
         return
 
     change_branch_and_merge()
-
-    if check_for_uncommitted_changes():
-        print("Error: There are uncommitted changes. Please commit or stash them before merging.")
-        return
-    else:
-        print("There are no uncommitted changes. Script continues...")
-
-    release_branch_title = create_release_branch(new_konsist_version)
-
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-
-    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"Remove deprecated declarations in the above files.")
-        return
-    else:
-        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
-
-    create_pull_request_to_main(new_konsist_version)
+    #
+    # if check_for_uncommitted_changes():
+    #     print("Error: There are uncommitted changes. Please commit or stash them before merging.")
+    #     return
+    # else:
+    #     print("There are no uncommitted changes. Script continues...")
+    #
+    # release_branch_title = create_release_branch(new_konsist_version)
+    #
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+    #
+    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
+    #
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"Remove deprecated declarations in the above files.")
+    #     return
+    # else:
+    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+    #
+    # create_pull_request_to_main(new_konsist_version)
     #
     # # Execute if all GitHub checks have passed
     # while True:
@@ -386,7 +386,7 @@ def create_release():
     #         print(f"All checks passed. Continuing script execution.")
     #         # Add your script logic here
     #         break  # Exit the loop if all checks passed
-
+    #
     # merge_pr(release_branch_title)
 # Script ===============================================================================================================
 create_release()
