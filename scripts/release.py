@@ -482,7 +482,7 @@ def create_release():
         print("Error: Unable to determine new version.")
         return
 
-    change_branch_and_merge()
+    change_branch_to_develop_and_and_merge_main()
 
     if check_for_uncommitted_changes():
         print("Error: There are uncommitted changes. Please commit or stash them before merging.")
