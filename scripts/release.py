@@ -387,6 +387,6 @@ def create_release():
     #         # Add your script logic here
     #         break  # Exit the loop if all checks passed
 
-    merge_pr(release_branch_title)
+    # merge_pr(release_branch_title)
 # Script ===============================================================================================================
 create_release()
