@@ -419,6 +419,8 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
                         f.write(content)
                         f.truncate()
 
+        # os.chdir(temp_dir)
+
         subprocess.run(["git", "add", "."], check=True)
         subprocess.run(["git", "commit", "-m", "Update version"], check=True)
         subprocess.run(["git", "push", "origin", branch_name], check=True)
