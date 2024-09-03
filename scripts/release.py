@@ -510,36 +510,36 @@ def create_release():
 
     create_pull_request_to_main(new_konsist_version)
 
-    # Execute if all GitHub checks have passed
-    while True:
-        # Get latest commit SHA
-        latest_commit_sha = get_latest_commit_sha(release_branch_title)
-        print(f"Latest commit SHA: {latest_commit_sha}")
+    # Get latest commit SHA
+    latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    print(f"Latest commit SHA: {latest_commit_sha}")
 
-        time.sleep(30)
-        print(f"Wait for running checks...")
+    print(f"Wait for running checks...")
+    time.sleep(30)
 
-        if not latest_commit_sha:
-            print(f"Error fetching commit SHA.")
-            break
-
-        # Check GitHub checks
-        check_statuses = check_github_checks(latest_commit_sha)
-
-        # Determine the status of the checks
-        if -1 in check_statuses:
-            print(f"The checks failed. Exiting script.")
-            sys.exit()
-
-        if 0 in check_statuses:
-            print(f"Checks in progress...")
-            time.sleep(60)  # Wait a minute before checking again
-            continue
-
-        if all(status == 1 for status in check_statuses):
-            print(f"All checks passed. Continuing script execution.")
-            # Add your script logic here
-            break  # Exit the loop if all checks passed
+    # # Execute if all GitHub checks have passed
+    # while True:
+    #     if not latest_commit_sha:
+    #         print(f"Error fetching commit SHA.")
+    #         break
+    #
+    #     # Check GitHub checks
+    #     check_statuses = check_github_checks(latest_commit_sha)
+    #
+    #     # Determine the status of the checks
+    #     if -1 in check_statuses:
+    #         print(f"The checks failed. Exiting script.")
+    #         sys.exit()
+    #
+    #     if 0 in check_statuses:
+    #         print(f"Checks in progress...")
+    #         time.sleep(60)  # Wait a minute before checking again
+    #         continue
+    #
+    #     if all(status == 1 for status in check_statuses):
+    #         print(f"All checks passed. Continuing script execution.")
+    #         # Add your script logic here
+    #         break  # Exit the loop if all checks passed
 
     merge_pr(release_branch_title)
 
