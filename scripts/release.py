@@ -344,6 +344,7 @@ def create_release():
             time.sleep(60)
             continue
 
+        print(f"Latest commit SHA: {latest_commit_sha}")
         # Check GitHub checks
         all_passed = check_github_checks(latest_commit_sha)
 
