@@ -541,7 +541,7 @@ def create_release():
     #         # Add your script logic here
     #         break  # Exit the loop if all checks passed
 
-    merge_pr(release_branch_title)
+    merge_release_pr(release_branch_title)
 
     create_github_release(new_konsist_version)
 
