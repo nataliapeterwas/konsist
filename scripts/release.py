@@ -6,6 +6,7 @@ import tempfile
 import shutil
 
 from common import (project_root)
+from deploy_snippets_to_kotlin_documentation_repo import (deploy_snippets_to_kotlin_documentation_repo)
 
 # Variables ============================================================================================================
 gradle_properties_file = os.path.join(project_root, "gradle.properties")
@@ -407,6 +408,8 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
         if not create_or_checkout_git_branch(branch_name, temp_dir):
             return None
 
+        os.chdir(temp_dir)
+
         # Update version numbers in Markdown files
         for root, dirs, files in os.walk("."):
             for file in files:
@@ -419,15 +422,14 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
                         f.write(content)
                         f.truncate()
 
-        # os.chdir(temp_dir)
-
         subprocess.run(["git", "add", "."], check=True)
         subprocess.run(["git", "commit", "-m", "Update version"], check=True)
         subprocess.run(["git", "push", "origin", branch_name], check=True)
 
         pr_title = f"Update Konsist version: {old_version} -> {new_version}"
         os.system("gh pr create --title '" + pr_title + "' --body '""'")
-        # os.system("gh pr merge --merge --delete-branch")
+        os.system("gh pr merge --merge --delete-branch")
+
         return temp_dir
     except subprocess.CalledProcessError as e:
         print(f"Error running Git command: {e}")
@@ -436,6 +438,9 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
     finally:
         # Cleanup: Remove the temporary directory
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+def update_snippets_in_konsist_documentation():
+    deploy_snippets_to_kotlin_documentation_repo()
 
 def create_release():
     chosen_option = 1  # remove!!!
@@ -520,7 +525,9 @@ def create_release():
     # merge_pr(release_branch_title)
     #
     # create_github_release(new_konsist_version)
+    #
+    # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
 
-    update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+    update_snippets_in_konsist_documentation()
 # Script ===============================================================================================================
 create_release()
