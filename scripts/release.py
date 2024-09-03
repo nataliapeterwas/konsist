@@ -295,84 +295,98 @@ def check_github_checks(ref):
         print(f"An error occurred while checking the GitHub checks: {e}")
         return None
 
+def merge_pr(branch_name):
+    """Merges a pull request from the given branch using GitHub CLI without squashing.
+
+    Args: branch_name (str): The name of the branch to merge.
+    """
+
+    # Merge the branch without squashing using GitHub CLI
+    try:
+        subprocess.check_call(["gh", "pr", "merge", branch_name, "--merge", "--delete-branch"])
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to merge branch '{branch_name}': {e}")
+        return
+
+    print(f"Successfully merged branch '{branch_name}'.")
 
 def create_release():
-    chosen_option = 1  # remove!!!
-    #
-    # # chosen_option = choose_release_option()
-    # print(f"You chose option: {chosen_option}")
-    #
-    # old_konsist_version = get_old_konsist_version()
-    # print(f"Old konsist version: {old_konsist_version}")
-    #
-    # # Check if old version is None
-    # if old_konsist_version is None:
-    #     print("Error: Unable to determine old version from `gradle.properties`.")
-    #     return
-    #
-    # new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
-    # print(f"New konsist version: {new_konsist_version}")
-    #
-    # # Check if new version is None
-    # if new_konsist_version is None:
-    #     print("Error: Unable to determine new version.")
-    #     return
-    #
-    # change_branch_and_merge()
-    #
-    # if check_for_uncommitted_changes():
-    #     print("Error: There are uncommitted changes. Please commit or stash them before merging.")
-    #     return
-    # else:
-    #     print("There are no uncommitted changes. Script continues...")
-    #
-    # release_branch_title = create_release_branch(new_konsist_version)
-    #
-    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-    #
-    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-    #
-    # # Check if list of files with deprecated annotation is not empty
-    # if deprecated_files:
-    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-    #     for file in deprecated_files:
-    #         file_path = os.path.join(project_root, file)
-    #         display_clickable_file_paths(file_path)
-    #     print(f"Remove deprecated declarations in the above files.")
-    #     return
-    # else:
-    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
-    #
-    # create_pull_request_to_main(new_konsist_version)
+    # chosen_option = 1  # remove!!!
 
-    while True:
-        # Get latest commit SHA
-        # latest_commit_sha = get_latest_commit_sha(release_branch_title)
-        latest_commit_sha = get_latest_commit_sha("release/v0.17.0") # remove this !!!
-        print(f"Latest commit SHA: {latest_commit_sha}")
+    chosen_option = choose_release_option()
+    print(f"You chose option: {chosen_option}")
 
-        if not latest_commit_sha:
-            print(f"Error fetching commit SHA.")
-            break
+    old_konsist_version = get_old_konsist_version()
+    print(f"Old konsist version: {old_konsist_version}")
 
-        # Check GitHub checks
-        check_statuses = check_github_checks(latest_commit_sha)
+    # Check if old version is None
+    if old_konsist_version is None:
+        print("Error: Unable to determine old version from `gradle.properties`.")
+        return
 
-        # Determine the status of the checks
-        if -1 in check_statuses:
-            print(f"A check failed. Exiting script.")
-            sys.exit()
+    new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
+    print(f"New konsist version: {new_konsist_version}")
 
-        if 0 in check_statuses:
-            print(f"Checks in progress. Waiting for re-run.")
-            time.sleep(60)  # Wait a minute before checking again
-            continue
+    # Check if new version is None
+    if new_konsist_version is None:
+        print("Error: Unable to determine new version.")
+        return
 
-        if all(status == 1 for status in check_statuses):
-            print(f"All checks passed. Continuing script execution.")
-            # Add your script logic here
-            break  # Exit the loop if all checks passed
+    change_branch_and_merge()
 
+    if check_for_uncommitted_changes():
+        print("Error: There are uncommitted changes. Please commit or stash them before merging.")
+        return
+    else:
+        print("There are no uncommitted changes. Script continues...")
 
+    release_branch_title = create_release_branch(new_konsist_version)
+
+    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+
+    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
+
+    # Check if list of files with deprecated annotation is not empty
+    if deprecated_files:
+        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+        for file in deprecated_files:
+            file_path = os.path.join(project_root, file)
+            display_clickable_file_paths(file_path)
+        print(f"Remove deprecated declarations in the above files.")
+        return
+    else:
+        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+
+    create_pull_request_to_main(new_konsist_version)
+    #
+    # # Execute if all GitHub checks have passed
+    # while True:
+    #     # Get latest commit SHA
+    #     latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    #     print(f"Latest commit SHA: {latest_commit_sha}")
+    #
+    #     if not latest_commit_sha:
+    #         print(f"Error fetching commit SHA.")
+    #         break
+    #
+    #     # Check GitHub checks
+    #     check_statuses = check_github_checks(latest_commit_sha)
+    #
+    #     # Determine the status of the checks
+    #     if -1 in check_statuses:
+    #         print(f"The checks failed. Exiting script.")
+    #         sys.exit()
+    #
+    #     if 0 in check_statuses:
+    #         print(f"Checks in progress...")
+    #         time.sleep(60)  # Wait a minute before checking again
+    #         continue
+    #
+    #     if all(status == 1 for status in check_statuses):
+    #         print(f"All checks passed. Continuing script execution.")
+    #         # Add your script logic here
+    #         break  # Exit the loop if all checks passed
+
+    merge_pr("release/v0.17.0")
 # Script ===============================================================================================================
 create_release()
