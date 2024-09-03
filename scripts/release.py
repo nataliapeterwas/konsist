@@ -1,6 +1,10 @@
+import json
 import os
 import re
 import subprocess
+import time
+
+from datetime import datetime
 from common import (project_root)
 
 # Variables ============================================================================================================
@@ -121,6 +125,8 @@ def create_release_branch(version):
     Checks if a release branch with the specified version exists. If not, creates it from the 'development' branch.
 
     Args: version: The version number to check for.
+
+    Returns: Branch title
     """
 
     try:
@@ -134,11 +140,14 @@ def create_release_branch(version):
             return
 
         # Create the release branch from 'development'
-        subprocess.run(["git", "checkout", "-b", f"release/v{version}"], check=True)
-        print(f"Created release branch 'release/v{version}'")
+        branch_title = f"release/v{version}"
+        subprocess.run(["git", "checkout", "-b", branch_title], check=True)
+        print(f"Created release branch '{branch_title}'")
+        return branch_title
 
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+        return None
 
 def replace_konsist_version(old_version, new_version, files):
     """
@@ -208,59 +217,145 @@ def create_pull_request_to_main(version):
         subprocess.run(["git", "push", "--set-upstream", "origin", "HEAD"], check=True)
 
         # Create the pull request using the GitHub CLI
-        subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--base", "main"], check=True)
+        subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--body", "",  "--base", "main"], check=True)
 
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
+def get_latest_commit_sha(branch):
+    """
+    Get the latest commit SHA from a specific branch using GitHub CLI.
+    """
+    try:
+        result = subprocess.run(
+            ['gh', 'api', f'/repos/nataliapeterwas/konsist/commits/{branch}', '--jq', '.sha'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if result.returncode != 0:
+            print(f"Error fetching latest commit SHA: {result.stderr}")
+            return None
+
+        return result.stdout.strip()
+
+    except Exception as e:
+        print(f"An error occurred while getting the latest commit SHA: {e}")
+        return None
+
+def check_github_checks(ref):
+    """
+    Check the status of GitHub checks for a specific commit.
+    """
+    try:
+        result = subprocess.run(
+            ['gh', 'api', f'/repos/nataliapeterwas/konsist/commits/{ref}/check-runs', '--jq', '.check_runs'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        if result.returncode != 0:
+            print("Error fetching check runs:", result.stderr)
+            return None
+
+        check_runs = json.loads(result.stdout)
+
+        # Flag to track if all checks passed (excluding skipped)
+        all_passed = True
+
+        for check in check_runs:
+            check_name = check['name']
+            check_status = check['conclusion']
+
+            if check_status == 'success':
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' passed.")
+            elif check_status == 'failure':
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' failed.")
+                all_passed = False
+            elif check_status == 'neutral':
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' skipped.")
+            else:
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' status: {check_status}")
+
+        return all_passed
+
+    except Exception as e:
+        print(f"An error occurred while checking the GitHub checks: {e}")
+        return None
+
+
 def create_release():
     chosen_option = 1  # remove!!!
-    #
-    # # chosen_option = choose_release_option()
-    # print(f"You chose option: {chosen_option}")
-    #
+
+    # chosen_option = choose_release_option()
+    print(f"You chose option: {chosen_option}")
+
     old_konsist_version = get_old_konsist_version()
-    # print(f"Old konsist version: {old_konsist_version}")
-    #
-    # # Check if old version is None
-    # if old_konsist_version is None:
-    #     print("Error: Unable to determine old version from `gradle.properties`.")
-    #     return
-    #
+    print(f"Old konsist version: {old_konsist_version}")
+
+    # Check if old version is None
+    if old_konsist_version is None:
+        print("Error: Unable to determine old version from `gradle.properties`.")
+        return
+
     new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
-    # print(f"New konsist version: {new_konsist_version}")
-    #
-    # # Check if new version is None
-    # if new_konsist_version is None:
-    #     print("Error: Unable to determine new version.")
-    #     return
-    #
-    # change_branch_and_merge()
-    #
-    # if check_for_uncommitted_changes():
-    #     print("Error: There are uncommitted changes. Please commit or stash them before merging.")
-    #     return
-    # else:
-    #     print("There are no uncommitted changes. Script continues...")
-    #
-    # create_release_branch(new_konsist_version)
-    #
-    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-    #
-    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-    #
-    # # Check if list of files with deprecated annotation is not empty
-    # if deprecated_files:
-    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-    #     for file in deprecated_files:
-    #         file_path = os.path.join(project_root, file)
-    #         display_clickable_file_paths(file_path)
-    #     print(f"Remove deprecated declarations in the above files.")
-    #     return
-    # else:
-    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+    print(f"New konsist version: {new_konsist_version}")
+
+    # Check if new version is None
+    if new_konsist_version is None:
+        print("Error: Unable to determine new version.")
+        return
+
+    change_branch_and_merge()
+
+    if check_for_uncommitted_changes():
+        print("Error: There are uncommitted changes. Please commit or stash them before merging.")
+        return
+    else:
+        print("There are no uncommitted changes. Script continues...")
+
+    release_branch_title = create_release_branch(new_konsist_version)
+
+    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+
+    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
+
+    # Check if list of files with deprecated annotation is not empty
+    if deprecated_files:
+        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+        for file in deprecated_files:
+            file_path = os.path.join(project_root, file)
+            display_clickable_file_paths(file_path)
+        print(f"Remove deprecated declarations in the above files.")
+        return
+    else:
+        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
 
     create_pull_request_to_main(new_konsist_version)
+
+    while True:
+        # Get latest commit SHA
+        latest_commit_sha = get_latest_commit_sha(release_branch_title)
+
+        if not latest_commit_sha:
+            print(f"{datetime.now().strftime('%H:%M:%S')}: Error fetching commit SHA, retrying in a minute.")
+            time.sleep(60)
+            continue
+
+        # Check GitHub checks
+        all_passed = check_github_checks(latest_commit_sha)
+
+        if all_passed:
+            print(f"{datetime.now().strftime('%H:%M:%S')}: All checks passed. Continuing script execution.")
+            # Add your script logic here
+            break  # Exit the loop if all checks passed (without skipped)
+        else:
+            print(f"{datetime.now().strftime('%H:%M:%S')}: Checks in progress. Waiting for re-run.")
+            time.sleep(60)  # Wait a minute before checking again
+
+    print(f"{datetime.now().strftime('%H:%M:%S')}: Script finished.")
 
 # Script ===============================================================================================================
 create_release()
