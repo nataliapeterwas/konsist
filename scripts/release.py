@@ -250,7 +250,7 @@ def check_github_checks(ref):
     """
     try:
         result = subprocess.run(
-            ['gh', 'api', f'/repos/nataliapeterwas/konsist/commits/{ref}/check-runs', '--jq', '.check_runs'],
+            ['gh', 'api', f'/repos/nataliapeterwas/konsist/commits/{ref}/check-runs', '--jq', '.check_runs'], # change to LemonAppDev!!!
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -263,23 +263,33 @@ def check_github_checks(ref):
         check_runs = json.loads(result.stdout)
 
         # Flag to track if all checks passed (excluding skipped)
-        all_passed = True
+        # -1 - failed, 1 - success, 0 - running or neutral
+        statuses = []
 
         for check in check_runs:
             check_name = check['name']
             check_status = check['conclusion']
+            check_status_text = check.get('status', '')  # Check the status field for queued, in progress, etc.
 
             if check_status == 'success':
                 print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' passed.")
+                statuses.append(1)
             elif check_status == 'failure':
                 print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' failed.")
-                all_passed = False
+                statuses.append(-1)
+            elif check_status_text == 'queued':
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' is queued and waiting to run.")
+                statuses.append(0)
+            elif check_status_text == 'in_progress':
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' is currently running.")
+                statuses.append(0)
             elif check_status == 'neutral':
                 print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' skipped.")
+                statuses.append(0)
             else:
-                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' status: {check_status}")
+                print(f"{datetime.now().strftime('%H:%M:%S')}: Check '{check_name}' status: {check_status_text}")
 
-        return all_passed
+        return statuses
 
     except Exception as e:
         print(f"An error occurred while checking the GitHub checks: {e}")
@@ -288,10 +298,10 @@ def check_github_checks(ref):
 
 def create_release():
     chosen_option = 1  # remove!!!
-
-    # chosen_option = choose_release_option()
-    print(f"You chose option: {chosen_option}")
-
+    #
+    # # chosen_option = choose_release_option()
+    # print(f"You chose option: {chosen_option}")
+    #
     old_konsist_version = get_old_konsist_version()
     print(f"Old konsist version: {old_konsist_version}")
 
@@ -338,26 +348,31 @@ def create_release():
     while True:
         # Get latest commit SHA
         latest_commit_sha = get_latest_commit_sha(release_branch_title)
+        # latest_commit_sha = get_latest_commit_sha("release/v0.17.0") # remove this !!!
         print(f"Latest commit SHA: {latest_commit_sha}")
 
         if not latest_commit_sha:
-            print(f"{datetime.now().strftime('%H:%M:%S')}: Error fetching commit SHA, retrying in a minute.")
-            time.sleep(60)
-            continue
+            print(f"{datetime.now().strftime('%H:%M:%S')}: Error fetching commit SHA.")
+            break
 
         # Check GitHub checks
-        time.sleep(30)
-        all_passed = check_github_checks(latest_commit_sha)
+        check_statuses = check_github_checks(latest_commit_sha)
 
-        if all_passed:
-            print(f"{datetime.now().strftime('%H:%M:%S')}: All checks passed. Continuing script execution.")
-            # Add your script logic here
-            break  # Exit the loop if all checks passed (without skipped)
-        else:
+        # Determine the status of the checks
+        if -1 in check_statuses:
+            print(f"{datetime.now().strftime('%H:%M:%S')}: A check failed. Exiting script.")
+            break
+
+        if 0 in check_statuses:
             print(f"{datetime.now().strftime('%H:%M:%S')}: Checks in progress. Waiting for re-run.")
             time.sleep(60)  # Wait a minute before checking again
+            continue
 
-    print(f"{datetime.now().strftime('%H:%M:%S')}: Script finished.")
+        if all(status == 1 for status in check_statuses):
+            print(f"{datetime.now().strftime('%H:%M:%S')}: All checks passed. Continuing script execution.")
+            # Add your script logic here
+            break  # Exit the loop if all checks passed
+
 
 # Script ===============================================================================================================
 create_release()
