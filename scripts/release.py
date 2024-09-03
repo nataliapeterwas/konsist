@@ -6,7 +6,6 @@ import tempfile
 import shutil
 
 from common import (project_root)
-from deploy_snippets_to_kotlin_documentation_repo import (deploy_snippets_to_kotlin_documentation_repo)
 
 # Variables ============================================================================================================
 gradle_properties_file = os.path.join(project_root, "gradle.properties")
@@ -88,7 +87,7 @@ def get_new_konsist_version(release_option_num, old_version):
     return new_version
 
 
-def change_branch_and_merge():
+def change_branch_to_develop_and_and_merge_main():
     """
     Changes branch to 'development', fetches and pulls changes and merges 'main' into 'develop'.
     """
@@ -440,7 +439,26 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 def update_snippets_in_konsist_documentation():
-    deploy_snippets_to_kotlin_documentation_repo()
+    from deploy_snippets_to_kotlin_documentation_repo import (deploy_snippets_to_kotlin_documentation_repo)
+
+def merge_main_to_develop():
+    """
+    Merges the `main` branch into the `develop` branch on GitHub.
+    """
+
+    # Clone the repository
+    subprocess.run(["gh", "repo", "clone", repository_url])
+
+    # Change to the cloned directory
+    subprocess.run(["cd", repository_url.split("/")[-1]])
+
+    # Checkout the `develop` branch
+    subprocess.run(["git", "checkout", "develop"])
+
+    # Merge the `main` branch
+    subprocess.run(["git", "merge", "main"], check=True)
+
+    # Push the changes
 
 def create_release():
     chosen_option = 1  # remove!!!
@@ -527,7 +545,9 @@ def create_release():
     # create_github_release(new_konsist_version)
     #
     # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+    #
+    # update_snippets_in_konsist_documentation()
 
-    update_snippets_in_konsist_documentation()
+    change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
 create_release()
