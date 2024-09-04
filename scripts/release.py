@@ -361,9 +361,151 @@ def create_github_release(version):
     # Update the GitHub release
     subprocess.run(["gh", "release", "edit", tag, "--notes", updated_release_notes], check=True)
 
+def parse_github_release_text_into_section(text):
+    # Remove trailing whitespace and split the text into lines
+    lines = text.strip().splitlines()
+
+    # Check if the last line starts with '**Full Changelog**'
+    full_changelog = ""
+    if lines[-1].startswith("**Full Changelog**"):
+        full_changelog = lines.pop().strip()  # Save and remove the last line
+
+    # Join the remaining lines back into a single text block
+    remaining_text = "\n".join(lines)
+
+    # Define a dictionary to store the sections
+    sections = {}
+
+    # Define a pattern to capture sections and their content
+    section_pattern = re.compile(r'## (.*?)\n(.*?)(?=(\n## |\Z))', re.DOTALL)
+
+    # Find all matches in the text
+    matches = section_pattern.findall(remaining_text)
+
+    # Process each section
+    for match in matches:
+        section_title = match[0].strip()
+        section_content = match[1].strip()
+
+        # Join section lines with a comma and save as a single string
+        content_lines = section_content.split('\n')
+
+        # Add the section to the dictionary
+        sections[section_title] = content_lines
+
+    return sections, full_changelog
+
+def arrange_pull_requests_by_labels(section):
+    # Regular expression pattern for URLs
+    url_pattern = re.compile(r'https?://[^\s]+')
+    label_to_lines = {
+        "dependency-upgrade": [],
+        "others": []
+    }
+    renovate_lines = []
+
+    # Extract and print URLs from the section
+    for line in section:
+        if "by @renovate" in line:
+            renovate_lines.append(line)
+        else:
+            urls = url_pattern.findall(line)
+            for url in urls:
+                # Extract the pull request number from the URL
+                pr_number = re.search(r'/pull/(\d+)', url)
+                command = ['gh', 'pr', 'view', url, '--json', 'labels']
+                try:
+                    # Execute the command and capture the output
+                    result = subprocess.run(command, check=True, text=True, capture_output=True)
+                    # Parse the JSON output to extract labels
+                    pr_data = json.loads(result.stdout)
+                    pr_labels = pr_data.get('labels', [])
+
+                    # Update the dictionary with labels and associated lines
+                    labels_found = False
+                    for label_entry in pr_labels:
+                        if isinstance(label_entry, dict):
+                            label = label_entry.get('name', 'Unnamed Label')
+                        else:
+                            label = label_entry
+
+                        if label not in label_to_lines:
+                            label_to_lines[label] = []
+                        label_to_lines[label].append(line)
+                        labels_found = True
+
+                    if not labels_found:
+                        label_to_lines["others"].append(line)
+                except subprocess.CalledProcessError as e:
+                    print(f'Error executing command for PR {pr_number}: {e}')
+                except json.JSONDecodeError as e:
+                    print(f'Error decoding JSON output for PR {pr_number}: {e}')
+
+    # Add renovate lines to the "dependency-upgrade" entry
+    label_to_lines["dependency-upgrade"].extend(renovate_lines)
+
+    return label_to_lines
+
+def generate_changelog(updated_map, full_changelog, sections):
+    # Start with the initial headers and empty lines
+    changelog = (
+        "## What's Changed\n\n\n\n"
+        "## What’s Next?\n\n\n\n"
+        "## Complete list of changes:\n\n"
+    )
+
+    # Check if 'New Contributors' exists in the sections map
+    if 'New Contributors' in sections:
+        changelog += "## New Contributors\n"
+        for contributor in sections['New Contributors']:
+            changelog += f"{contributor}\n"
+        changelog += "\n"
+
+    # Define the mapping for titles
+    title_mapping = {
+        'breaking-api-change': '### ⚠️ Breaking API Changes',
+        'bug-fix': '### 🐛 Bug Fixes',
+        'improvement': '### 💡 Improvements',
+        'documentation': '### 📕 Documentation',
+        'CI': '### 🏗️ CI',
+        'maintenance': '### 🏗️ Maintenance',
+        'dependency-upgrade': '### 📦 Dependency Upgrade',
+        'others': '### Others'
+    }
+
+    # Add each section based on the mapping
+    for key, title in title_mapping.items():
+        if key in updated_map and updated_map[key]:
+            changelog += f"{title}\n"
+            for item in updated_map[key]:
+                changelog += f"{item}\n"
+            changelog += "\n"
+
+    # Include any other keys that were not covered by the title mapping
+    for key in updated_map:
+        if key not in title_mapping:
+            changelog += f"### {key}\n"
+            for item in updated_map[key]:
+                changelog += f"{item}\n"
+            changelog += "\n"
+
+    # Append the full changelog at the end
+    changelog += f"{full_changelog}\n"
+
+    return changelog
+
 def format_and_update_github_release_notes(release_notes):
-    print(release_notes)
-    return "******Updated Release Notes******"
+    sections, full_changelog = parse_github_release_text_into_section(release_notes)
+
+    first_section_key = next(iter(sections))
+    first_section = sections[first_section_key]
+
+    labels = arrange_pull_requests_by_labels(first_section)
+
+    changelog = generate_changelog(labels, full_changelog, sections)
+    print(changelog)
+
+    return changelog
 
 # needed ????
 def create_or_checkout_git_branch(branch, temp_dir):
@@ -468,54 +610,54 @@ def create_release():
     # print(f"You chose option: {chosen_option}")
     #
     old_konsist_version = get_old_konsist_version()
-    print(f"Old konsist version: {old_konsist_version}")
-
-    # Check if old version is None
-    if old_konsist_version is None:
-        print("Error: Unable to determine old version from `gradle.properties`.")
-        return
-
+    # print(f"Old konsist version: {old_konsist_version}")
+    #
+    # # Check if old version is None
+    # if old_konsist_version is None:
+    #     print("Error: Unable to determine old version from `gradle.properties`.")
+    #     return
+    #
     new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
-    print(f"New konsist version: {new_konsist_version}")
-
-    # Check if new version is None
-    if new_konsist_version is None:
-        print("Error: Unable to determine new version.")
-        return
-
-    change_branch_to_develop_and_and_merge_main()
-
-    if check_for_uncommitted_changes():
-        print("Error: There are uncommitted changes. Please commit or stash them before merging.")
-        return
-    else:
-        print("There are no uncommitted changes. Script continues...")
-
-    release_branch_title = create_release_branch(new_konsist_version)
-
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-
-    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"Remove deprecated declarations in the above files.")
-        return
-    else:
-        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
-
-    create_pull_request_to_main(new_konsist_version)
-
-    # Get latest commit SHA
-    latest_commit_sha = get_latest_commit_sha(release_branch_title)
-    print(f"Latest commit SHA: {latest_commit_sha}")
-
-    print(f"Wait for running checks...")
-    time.sleep(30)
+    # print(f"New konsist version: {new_konsist_version}")
+    #
+    # # Check if new version is None
+    # if new_konsist_version is None:
+    #     print("Error: Unable to determine new version.")
+    #     return
+    #
+    # change_branch_to_develop_and_and_merge_main()
+    #
+    # if check_for_uncommitted_changes():
+    #     print("Error: There are uncommitted changes. Please commit or stash them before merging.")
+    #     return
+    # else:
+    #     print("There are no uncommitted changes. Script continues...")
+    #
+    # release_branch_title = create_release_branch(new_konsist_version)
+    #
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+    #
+    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
+    #
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"Remove deprecated declarations in the above files.")
+    #     return
+    # else:
+    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+    #
+    # create_pull_request_to_main(new_konsist_version)
+    #
+    # # Get latest commit SHA
+    # latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    # print(f"Latest commit SHA: {latest_commit_sha}")
+    #
+    # print(f"Wait for running checks...")
+    # time.sleep(30)
 
     # # Execute if all GitHub checks have passed
     # while True:
@@ -540,15 +682,38 @@ def create_release():
     #         print(f"All checks passed. Continuing script execution.")
     #         # Add your script logic here
     #         break  # Exit the loop if all checks passed
-
-    merge_release_pr(release_branch_title)
-
+    #
+    # merge_release_pr(release_branch_title)
+    #
     create_github_release(new_konsist_version)
-
+    #
     # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
-
+    #
     # update_snippets_in_konsist_documentation()
-
-    change_branch_to_develop_and_and_merge_main()
+    #
+    # change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
-create_release()
+# create_release()
+
+# Example usage
+text = f"""
+## What's Changed
+* Update Kotest Snippets by @nataliapeterwas in https://github.com/LemonAppDev/konsist/pull/701
+* Replace REGEX to allow using .. as wildcard again by @guiguegon in https://github.com/LemonAppDev/konsist/pull/720
+* Update README.md by @igorwojda in https://github.com/LemonAppDev/konsist/pull/771
+* Fixed broken link to the getting started guide. by @TheMaxCoder in https://github.com/LemonAppDev/konsist/pull/827
+* Fix wrong detection of Git root project dir by @pkubowicz in https://github.com/LemonAppDev/konsist/pull/831
+* Release/v0.14.0 by @igorwojda in https://github.com/LemonAppDev/konsist/pull/917
+* Revert "Release/v0.14.0" by @igorwojda in https://github.com/LemonAppDev/konsist/pull/932
+* Release/v0.14.0 by @igorwojda in https://github.com/LemonAppDev/konsist/pull/933
+
+## New Contributors
+* @guiguegon made their first contribution in https://github.com/LemonAppDev/konsist/pull/720
+* @TheMaxCoder made their first contribution in https://github.com/LemonAppDev/konsist/pull/827
+* @pkubowicz made their first contribution in https://github.com/LemonAppDev/konsist/pull/831
+
+**Full Changelog**: https://github.com/LemonAppDev/konsist/compare/v0.13.0...v0.14.0
+"""
+
+
+format_and_update_github_release_notes(text)
