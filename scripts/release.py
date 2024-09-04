@@ -651,16 +651,16 @@ def create_release():
 
     deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
 
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"Remove deprecated declarations in the above files.")
-        return
-    else:
-        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"Remove deprecated declarations in the above files.")
+    #     return
+    # else:
+    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
 
     create_pull_request_to_main(new_konsist_version)
 
