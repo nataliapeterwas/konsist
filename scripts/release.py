@@ -507,9 +507,7 @@ def format_and_update_github_release_notes(release_notes):
     first_section = sections[first_section_key]
 
     labels = arrange_pull_requests_by_labels(first_section)
-
     changelog = generate_changelog(labels, full_changelog, sections)
-    print(changelog)
 
     return changelog
 
