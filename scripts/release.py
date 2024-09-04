@@ -634,63 +634,63 @@ def create_release():
         print("There are no uncommitted changes. Script continues...")
 
     release_branch_title = create_release_branch(new_konsist_version)
-
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-
-    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"Remove deprecated declarations in the above files.")
-        return
-    else:
-        print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
-
-    create_pull_request_to_main(new_konsist_version)
-
-    # Get latest commit SHA
-    latest_commit_sha = get_latest_commit_sha(release_branch_title)
-    print(f"Latest commit SHA: {latest_commit_sha}")
-
-    print(f"Wait for running checks...")
-    time.sleep(30)
-
-    # # Execute if all GitHub checks have passed
-    # while True:
-    #     if not latest_commit_sha:
-    #         print(f"Error fetching commit SHA.")
-    #         break
     #
-    #     # Check GitHub checks
-    #     check_statuses = check_github_checks(latest_commit_sha)
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
     #
-    #     # Determine the status of the checks
-    #     if -1 in check_statuses:
-    #         print(f"The checks failed. Exiting script.")
-    #         sys.exit()
+    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
     #
-    #     if 0 in check_statuses:
-    #         print(f"Checks in progress...")
-    #         time.sleep(60)  # Wait a minute before checking again
-    #         continue
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"Files contains @Deprecated annotation with {new_konsist_version} version:")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"Remove deprecated declarations in the above files.")
+    #     return
+    # else:
+    #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
     #
-    #     if all(status == 1 for status in check_statuses):
-    #         print(f"All checks passed. Continuing script execution.")
-    #         # Add your script logic here
-    #         break  # Exit the loop if all checks passed
-
-    merge_release_pr(release_branch_title)
-
-    create_github_release(new_konsist_version)
-
-    update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
-
-    update_snippets_in_konsist_documentation()
-
-    change_branch_to_develop_and_and_merge_main()
+    # create_pull_request_to_main(new_konsist_version)
+    #
+    # # Get latest commit SHA
+    # latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    # print(f"Latest commit SHA: {latest_commit_sha}")
+    #
+    # print(f"Wait for running checks...")
+    # time.sleep(30)
+    #
+    # # # Execute if all GitHub checks have passed
+    # # while True:
+    # #     if not latest_commit_sha:
+    # #         print(f"Error fetching commit SHA.")
+    # #         break
+    # #
+    # #     # Check GitHub checks
+    # #     check_statuses = check_github_checks(latest_commit_sha)
+    # #
+    # #     # Determine the status of the checks
+    # #     if -1 in check_statuses:
+    # #         print(f"The checks failed. Exiting script.")
+    # #         sys.exit()
+    # #
+    # #     if 0 in check_statuses:
+    # #         print(f"Checks in progress...")
+    # #         time.sleep(60)  # Wait a minute before checking again
+    # #         continue
+    # #
+    # #     if all(status == 1 for status in check_statuses):
+    # #         print(f"All checks passed. Continuing script execution.")
+    # #         # Add your script logic here
+    # #         break  # Exit the loop if all checks passed
+    #
+    # merge_release_pr(release_branch_title)
+    #
+    # create_github_release(new_konsist_version)
+    #
+    # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+    #
+    # update_snippets_in_konsist_documentation()
+    #
+    # change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
 create_release()
