@@ -132,20 +132,26 @@ def create_release_branch(version):
     Returns: Branch title
     """
 
+    branch_title = f"release/v{version}"
+
     try:
         # Check if the release branch already exists
         result = subprocess.run(["git", "branch", "--list"], check=True, capture_output=True)
-        if f"Release/v{version}" in result.stdout.decode():
-            print(f"Release branch 'release/v{version}' already exists.")
+        existing_branches = result.stdout.decode().splitlines()
 
-            # Switch to the existing branch
-            subprocess.run(["git", "checkout", f"release/v{version}"], check=True)
-            return
+        if branch_title in existing_branches:
+            print(f"Release branch '{branch_title}' already exists.")
+        else:
+            print(f"Release branch '{branch_title}' does not exist. Creating it from 'development'.")
+            # Switch to the 'development' branch
+            subprocess.run(["git", "checkout", "development"], check=True)
+            # Create the new release branch from 'development'
+            subprocess.run(["git", "checkout", "-b", branch_title], check=True)
+            print(f"Created and switched to release branch '{branch_title}'")
+            return branch_title
 
-        # Create the release branch from 'development'
-        branch_title = f"release/v{version}"
-        subprocess.run(["git", "checkout", "-b", branch_title], check=True)
-        print(f"Created release branch '{branch_title}'")
+        # Switch to the existing branch
+        subprocess.run(["git", "checkout", branch_title], check=True)
         return branch_title
 
     except subprocess.CalledProcessError as e:
