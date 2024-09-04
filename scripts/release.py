@@ -138,6 +138,7 @@ def create_release_branch(version):
         # Check if the release branch already exists
         result = subprocess.run(["git", "branch", "--list"], check=True, capture_output=True)
         existing_branches = result.stdout.decode().splitlines()
+        print(existing_branches)
 
         if branch_title in existing_branches:
             print(f"Release branch '{branch_title}' already exists.")
