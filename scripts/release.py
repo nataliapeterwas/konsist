@@ -137,8 +137,7 @@ def create_release_branch(version):
     try:
         # Check if the release branch already exists
         result = subprocess.run(["git", "branch", "--list"], check=True, capture_output=True)
-        existing_branches = result.stdout.decode().splitlines()
-        print(existing_branches)
+        existing_branches = [branch.strip() for branch in result.stdout.decode().splitlines()]
 
         if branch_title in existing_branches:
             print(f"Release branch '{branch_title}' already exists.")
@@ -611,9 +610,9 @@ def merge_main_to_develop():
     # Push the changes
 
 def create_release():
-    # chosen_option = 1  # remove!!!
+    chosen_option = 1  # remove!!!
 
-    chosen_option = choose_release_option()
+    # chosen_option = choose_release_option()
     print(f"You chose option: {chosen_option}")
 
     old_konsist_version = get_old_konsist_version()
