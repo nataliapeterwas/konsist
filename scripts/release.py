@@ -168,6 +168,8 @@ def replace_konsist_version(old_version, new_version, files):
       files: A list of file paths to modify.
     """
 
+    changes_made = False
+
     for file_path in files:
         with open(file_path, 'r') as f:
             file_text = f.read()
@@ -177,9 +179,15 @@ def replace_konsist_version(old_version, new_version, files):
             f.write(file_text)
             print(f"Updated version in: {file_path}")
 
-    commit_message = f"Replace Konsist version {old_version} to {new_version}"
-    subprocess.run(["git", "add", "."], check=True)  # Stage all changes
-    subprocess.run(["git", "commit", "-m", commit_message], check=True)  # Commit changes
+    # Check if there are any changes to commit
+    result = subprocess.run(["git", "status", "--porcelain"], check=True, capture_output=True)
+    if result.stdout.decode().strip():
+        commit_message = f"Replace Konsist version {old_version} with {new_version}"
+        subprocess.run(["git", "add", "."], check=True)  # Stage all changes
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)  # Commit changes
+        print("Changes committed.")
+    else:
+        print("No changes made to files.")
 
 def find_files_with_deprecated_annotation(directory, version):
     """
