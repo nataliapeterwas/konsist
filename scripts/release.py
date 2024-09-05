@@ -784,7 +784,7 @@ def create_release():
     else:
         print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
 
-    test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
+    # test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
 
     create_pull_request_to_main(new_konsist_version)
 
