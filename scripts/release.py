@@ -229,33 +229,33 @@ def display_clickable_file_paths(file_path):
     print(hyperlink_text)
 
 def test_3rd_party_projects_using_local_artifacts(old_version, new_version):
-    # remove_snapshot_directories(m2_repo_path)
-    #
-    # try:
-    # # Running the Gradle command with the required parameters
-    #     subprocess.run(
-    #         ['./gradlew', 'publishToMavenLocal', '-Pkonsist.releaseTarget=local'],
-    #         check=True
-    #     )
-    #     print("Gradle command executed successfully.")
-    # except subprocess.CalledProcessError as e:
-    #     print(f"Gradle command failed with error: {e}")
-    # except FileNotFoundError:
-    #     print("Gradle wrapper ('./gradlew') not found. Make sure you're in the correct directory.")
+    remove_snapshot_directories(m2_repo_path)
+
+    try:
+    # Running the Gradle command with the required parameters
+        subprocess.run(
+            ['./gradlew', 'publishToMavenLocal', '-Pkonsist.releaseTarget=local'],
+            check=True
+        )
+        print("Gradle command executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Gradle command failed with error: {e}")
+    except FileNotFoundError:
+        print("Gradle wrapper ('./gradlew') not found. Make sure you're in the correct directory.")
 
     for repo in test_konsist_projects:
         repo_name = clone_or_pull_repo(repo)
         project_path = destination_dir + "/" + repo_name
         run_add_maven_local_repository(project_path + "/settings.gradle.kts")
-        # replace_konsist_version_to_snapshot_version(project_path + "/gradle/libs.versions.toml", old_version, new_version + "-SNAPSHOT")
-        #
+        replace_konsist_version_to_snapshot_version(project_path + "/gradle/libs.versions.toml", old_version, new_version + "-SNAPSHOT")
+
         # if "android-showcase" in repo_name:
         #     gradle_command = ['./gradlew', 'konsist_test:test', '--rerun-tasks']
         #     run_gradle_task(project_path, gradle_command)
-        #
-        # if "CleanArchitectureForAndroid" in repo_name:
-        #     gradle_command = ['./gradlew', 'test', '--no-daemon']
-        #     run_gradle_task(project_path, gradle_command)
+
+        if "CleanArchitectureForAndroid" in repo_name:
+            gradle_command = ['./gradlew', 'test', '--no-daemon']
+            run_gradle_task(project_path, gradle_command)
 
 def run_gradle_task(project_path, gradle_command):
     # Change to the project directory
