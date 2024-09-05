@@ -824,9 +824,9 @@ def create_release():
 
     create_github_release(new_konsist_version)
 
-    update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+    # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
 
-    update_snippets_in_konsist_documentation()
+    # update_snippets_in_konsist_documentation()
 
     change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
