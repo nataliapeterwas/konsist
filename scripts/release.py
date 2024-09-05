@@ -763,10 +763,10 @@ def create_release():
     change_branch_to_develop_and_and_merge_main()
 
     if check_for_uncommitted_changes():
-        print("There are no uncommitted changes. Script continues...")
-    else:
         print("Error: There are uncommitted changes. Please commit or stash them before merging.")
         return
+    else:
+        print("There are no uncommitted changes. Script continues...")
 
     release_branch_title = create_release_branch(new_konsist_version)
 
