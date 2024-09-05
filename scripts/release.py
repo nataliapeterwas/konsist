@@ -4,7 +4,6 @@ import re
 import subprocess
 import tempfile
 import shutil
-import time
 
 from common import (project_root)
 
@@ -14,8 +13,18 @@ read_me_file = os.path.join(project_root, "README.md")
 files_with_version_to_change = [gradle_properties_file, read_me_file]
 
 api_directory = 'lib/src/main/kotlin/com/lemonappdev/konsist/api'
+m2_repo_path = os.path.expanduser('~/.m2/repository/')
 
 konsist_documentation_repository_address = "LemonAppDev/konsist-documentation"
+
+test_konsist_projects = [
+    "https://github.com/igorwojda/android-showcase.git",
+    "https://github.com/EranBoudjnah/CleanArchitectureForAndroid.git",
+    # "https://github.com/LemonAppDev/mango.git"
+]
+
+# Directory to store the downloaded repositories
+destination_dir = os.path.expanduser('~/test_konsist_projects')
 
 # Methods ==============================================================================================================
 def choose_release_option():
@@ -168,8 +177,6 @@ def replace_konsist_version(old_version, new_version, files):
       files: A list of file paths to modify.
     """
 
-    changes_made = False
-
     for file_path in files:
         with open(file_path, 'r') as f:
             file_text = f.read()
@@ -220,6 +227,115 @@ def display_clickable_file_paths(file_path):
     hyperlink_text = f"\033[34m\033]8;;{hyperlink_url}\033\\{file_path}\033]8;;\033\\\033[0m"
 
     print(hyperlink_text)
+
+def test_3rd_party_projects_using_local_artifacts(old_version, new_version):
+    # remove_snapshot_directories(m2_repo_path)
+    #
+    # try:
+    # # Running the Gradle command with the required parameters
+    #     subprocess.run(
+    #         ['./gradlew', 'publishToMavenLocal', '-Pkonsist.releaseTarget=local'],
+    #         check=True
+    #     )
+    #     print("Gradle command executed successfully.")
+    # except subprocess.CalledProcessError as e:
+    #     print(f"Gradle command failed with error: {e}")
+    # except FileNotFoundError:
+    #     print("Gradle wrapper ('./gradlew') not found. Make sure you're in the correct directory.")
+
+    for repo in test_konsist_projects:
+        repo_name = clone_or_pull_repo(repo)
+        project_path = destination_dir + "/" + repo_name
+        run_add_maven_local_repository(project_path + "/settings.gradle.kts")
+        # replace_konsist_version_to_snapshot_version(project_path + "/gradle/libs.versions.toml", old_version, new_version + "-SNAPSHOT")
+        #
+        # if "android-showcase" in repo_name:
+        #     gradle_command = ['./gradlew', 'konsist_test:test', '--rerun-tasks']
+        #     run_gradle_task(project_path, gradle_command)
+        #
+        # if "CleanArchitectureForAndroid" in repo_name:
+        #     gradle_command = ['./gradlew', 'test', '--no-daemon']
+        #     run_gradle_task(project_path, gradle_command)
+
+def run_gradle_task(project_path, gradle_command):
+    # Change to the project directory
+    os.chdir(project_path)
+
+    try:
+        # Run the Gradle command
+        subprocess.run(gradle_command, check=True)
+        print("Gradle task executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Gradle task failed with error: {e}")
+        exit(1)  # Exit the script with an error code
+    except FileNotFoundError:
+        print("Gradle wrapper ('./gradlew') not found. Make sure you're in the correct directory.")
+
+def replace_konsist_version_to_snapshot_version(file_path, old_version, new_version):
+    try:
+        # Read the contents of the file
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        # Replace :konsist:{old_text} with :konsist:{new_text}
+        content = re.sub(rf':konsist:{old_version}', f':konsist:{new_version}', content)
+
+        # Replace test-konsist = "old_text" with test-konsist = "new_text"
+        content = re.sub(rf'test-konsist = "{old_version}"', f'test-konsist = "{new_version}"', content)
+
+        # Write the modified content back to the file
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(content)
+
+        print(f"Replaced all occurrences of '{old_version}' with '{new_version}' in {file_path}")
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+
+def run_add_maven_local_repository(file_path):
+    try:
+        # Command to run the Python script
+        subprocess.run(['python3', 'scripts/replace_konsist_version/add_maven_local_repository_to_config_file.py', file_path], check=True)
+        print("Script executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Script execution failed with error: {e}")
+    except FileNotFoundError:
+        print("The specified script or file was not found.")
+
+def remove_snapshot_directories(path):
+    """
+    Removes directories that match the given pattern within the specified path.
+
+    Args:
+      path: The path to the directory to search.
+    """
+
+    pattern = r"\d+\.\d+\.\d+-SNAPSHOT"
+
+    for root, dirs, files in os.walk(path):
+        for dir_name in dirs:
+            if re.match(pattern, dir_name):
+                dir_path = os.path.join(root, dir_name)
+                shutil.rmtree(dir_path)
+                print(f"Removed directory: {dir_path}")
+
+def clone_or_pull_repo(repo_url):
+    # Ensure the destination directory exists
+    os.makedirs(destination_dir, exist_ok=True)
+
+    # Extract repo name from URL
+    repo_name = repo_url.split('/')[-1].replace('.git', '')
+    repo_path = os.path.join(destination_dir, repo_name)
+
+    if os.path.exists(repo_path):
+        # If the repo exists, pull the latest changes
+        print(f"Pulling latest changes for {repo_name}...")
+        subprocess.run(["git", "-C", repo_path, "pull"], check=True)
+    else:
+        # If the repo doesn't exist, clone it
+        print(f"Cloning repository {repo_name}...")
+        subprocess.run(["git", "clone", repo_url, repo_path], check=True)
+
+    return repo_name
 
 def create_pull_request_to_main(version):
     """
@@ -662,6 +778,8 @@ def create_release():
     # # else:
     # #     print(f"No files contains @Deprecated annotation with {new_konsist_version} version.")
     #
+    test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
+    #
     # create_pull_request_to_main(new_konsist_version)
     #
     # # Get latest commit SHA
@@ -696,9 +814,9 @@ def create_release():
     #         break  # Exit the loop if all checks passed
     #
     # merge_release_pr(release_branch_title)
-
-    create_github_release(new_konsist_version)
-
+    #
+    # create_github_release(new_konsist_version)
+    #
     # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
     #
     # update_snippets_in_konsist_documentation()
