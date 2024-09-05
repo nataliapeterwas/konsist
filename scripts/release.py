@@ -128,7 +128,13 @@ def check_for_uncommitted_changes():
     Returns: True if there are uncommitted changes, False otherwise.
     """
 
-    result = subprocess.run(["git", "status", "--porcelain"], check=True, capture_output=True)
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
     return bool(result.stdout.strip())
 
 
