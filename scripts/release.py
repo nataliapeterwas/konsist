@@ -388,7 +388,9 @@ def create_pull_request_to_main(version):
         if pr_list:
             # If a PR already exists, log the information
             pr_title = pr_list[0]['title']
+            pr_url = pr_list[0]['url']
             print(f"\033[32mPull request already exists from branch '{current_branch}': {pr_title}\033[0m")
+            print(f"\033[33mPR URL: {pr_url}\033[0m")
         else:
             # If no PR exists, create a new one
             print(f"\033[32mCreating a new pull request from branch '{current_branch}'...\033[0m")
