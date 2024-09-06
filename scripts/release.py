@@ -723,8 +723,16 @@ def update_snippets_in_konsist_documentation():
 def create_release():
     chosen_option = 1  # remove!!!
 
+    if check_for_uncommitted_changes():
+        print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
+        return
+    else:
+        print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
+
     # chosen_option = choose_release_option()
     print(f"\033[32mYou chose option: {chosen_option}\033[0m")
+
+    change_branch_to_develop_and_and_merge_main()
 
     old_konsist_version = get_old_konsist_version()
     print(f"\033[32mOld konsist version: {old_konsist_version}\033[0m")
@@ -742,74 +750,72 @@ def create_release():
         print(f"\033[31mError: Unable to determine new version.\033[0m")
         return
 
-    change_branch_to_develop_and_and_merge_main()
-
     if check_for_uncommitted_changes():
         print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
         # return
     else:
         print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
 
-    release_branch_title = create_release_branch(new_konsist_version)
-
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-
-    deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-
-    # Check if list of files with deprecated annotation is not empty
-    if deprecated_files:
-        print(f"\033[31mFiles contains @Deprecated annotation with {new_konsist_version} version:\033[0m")
-        for file in deprecated_files:
-            file_path = os.path.join(project_root, file)
-            display_clickable_file_paths(file_path)
-        print(f"\033[31mRemove deprecated declarations in the above files.\033[0m")
-        return
-    else:
-        print(f"\033[32mNo files contains @Deprecated annotation with {new_konsist_version} version.\033[0m")
-
-    test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
-
-    create_pull_request_to_main(new_konsist_version)
-
-    # Get latest commit SHA
-    latest_commit_sha = get_latest_commit_sha(release_branch_title)
-    print(f"\033[32mLatest commit SHA: {latest_commit_sha}\033[0m")
-
-    print(f"\033[32mWait for running checks...\033[0m")
-    time.sleep(30)
-
-    ## Execute if all GitHub checks have passed
-    # while True:
-    #     if not latest_commit_sha:
-    #         print(f"\033[31mError fetching commit SHA.\033[0m")
-    #         break
+    # release_branch_title = create_release_branch(new_konsist_version)
     #
-    #     # Check GitHub checks
-    #     check_statuses = check_github_checks(latest_commit_sha)
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
     #
-    #     # Determine the status of the checks
-    #     if -1 in check_statuses:
-    #         print(f"\033[31mThe checks failed. Exiting script.\033[0m")
-    #         sys.exit()
+    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
     #
-    #     if 0 in check_statuses:
-    #         print(f"\033[33mChecks in progress...\033[0m")
-    #         time.sleep(60)  # Wait a minute before checking again
-    #         continue
+    # # Check if list of files with deprecated annotation is not empty
+    # if deprecated_files:
+    #     print(f"\033[31mFiles contains @Deprecated annotation with {new_konsist_version} version:\033[0m")
+    #     for file in deprecated_files:
+    #         file_path = os.path.join(project_root, file)
+    #         display_clickable_file_paths(file_path)
+    #     print(f"\033[31mRemove deprecated declarations in the above files.\033[0m")
+    #     return
+    # else:
+    #     print(f"\033[32mNo files contains @Deprecated annotation with {new_konsist_version} version.\033[0m")
     #
-    #     if all(status == 1 for status in check_statuses):
-    #         print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
-    #         # Add your script logic here
-    #         break  # Exit the loop if all checks passed
-
-    merge_release_pr(release_branch_title)
-
-    create_github_release(new_konsist_version)
-
-    # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
-
-    # update_snippets_in_konsist_documentation()
-
-    change_branch_to_develop_and_and_merge_main()
+    # test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
+    #
+    # create_pull_request_to_main(new_konsist_version)
+    #
+    # # Get latest commit SHA
+    # latest_commit_sha = get_latest_commit_sha(release_branch_title)
+    # print(f"\033[32mLatest commit SHA: {latest_commit_sha}\033[0m")
+    #
+    # print(f"\033[32mWait for running checks...\033[0m")
+    # time.sleep(30)
+    #
+    # ## Execute if all GitHub checks have passed
+    # # while True:
+    # #     if not latest_commit_sha:
+    # #         print(f"\033[31mError fetching commit SHA.\033[0m")
+    # #         break
+    # #
+    # #     # Check GitHub checks
+    # #     check_statuses = check_github_checks(latest_commit_sha)
+    # #
+    # #     # Determine the status of the checks
+    # #     if -1 in check_statuses:
+    # #         print(f"\033[31mThe checks failed. Exiting script.\033[0m")
+    # #         sys.exit()
+    # #
+    # #     if 0 in check_statuses:
+    # #         print(f"\033[33mChecks in progress...\033[0m")
+    # #         time.sleep(60)  # Wait a minute before checking again
+    # #         continue
+    # #
+    # #     if all(status == 1 for status in check_statuses):
+    # #         print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
+    # #         # Add your script logic here
+    # #         break  # Exit the loop if all checks passed
+    #
+    # merge_release_pr(release_branch_title)
+    #
+    # create_github_release(new_konsist_version)
+    #
+    # # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+    #
+    # # update_snippets_in_konsist_documentation()
+    #
+    # change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
 create_release()
