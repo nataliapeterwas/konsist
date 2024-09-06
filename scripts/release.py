@@ -776,9 +776,9 @@ def create_release():
 
     # check_for_uncommitted_changes()
     #
-    # release_branch_title = create_release_branch(new_konsist_version)
+    release_branch_title = create_release_branch(new_konsist_version)
     #
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
     #
     # check_if_exist_files_with_deprecated_annotation(api_directory, new_konsist_version)
     #
