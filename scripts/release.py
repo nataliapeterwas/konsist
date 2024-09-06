@@ -727,11 +727,7 @@ def update_snippets_in_konsist_documentation():
 def create_release():
     chosen_option = 1  # remove!!!
 
-    if check_for_uncommitted_changes():
-        print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
-        return
-    else:
-        print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
+    check_for_uncommitted_changes()
 
     # chosen_option = choose_release_option()
     print(f"\033[32mYou chose option: {chosen_option}\033[0m")
@@ -754,11 +750,7 @@ def create_release():
         print(f"\033[31mError: Unable to determine new version.\033[0m")
         return
 
-    if check_for_uncommitted_changes():
-        print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
-        # return
-    else:
-        print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
+    check_for_uncommitted_changes()
 
     # release_branch_title = create_release_branch(new_konsist_version)
     #
