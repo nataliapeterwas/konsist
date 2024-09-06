@@ -764,12 +764,11 @@ def update_snippets_in_konsist_documentation():
     from deploy_snippets_to_kotlin_documentation_repo import (deploy_snippets_to_kotlin_documentation_repo)
 
 def create_release():
-    check_for_uncommitted_changes()
-    print("Test")
+    # check_for_uncommitted_changes()
     #
     # chosen_option = choose_release_option()
     #
-    # change_branch_to_develop_and_and_merge_main()
+    change_branch_to_develop_and_and_merge_main()
     #
     # old_konsist_version = get_old_konsist_version()
     # new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
