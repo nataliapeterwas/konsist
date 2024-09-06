@@ -137,7 +137,11 @@ def check_for_uncommitted_changes():
         check=True
     )
 
-    return bool(result.stdout.strip())
+    if bool(result.stdout.strip()):
+        print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
+        sys.exit()
+    else:
+        print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
 
 
 def create_release_branch(version):
