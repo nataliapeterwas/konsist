@@ -43,6 +43,7 @@ def choose_release_option():
     while True:
         choice = input(f"\033[31;1mEnter your choice (1 or 2): \033[0m")
         if choice in ["1", "2"]:
+            print(f"\033[32mYou chose option: {int(choice)}\033[0m")
             return int(choice)
         else:
             print(f"\033[31mInvalid choice. Please enter 1 or 2.\033[0m")
@@ -62,14 +63,16 @@ def get_old_konsist_version():
             for line in f:
                 line = line.strip()
                 if line.startswith('konsist.version='):
-                    return line.split('=')[1]
+                    version = line.split('=')[1]
+                    print(f"\033[32mOld konsist version: {version}\033[0m")
+                    return version
         raise ValueError("konsist.version property not found in gradle.properties")
     except FileNotFoundError:
         print(f"\033[31mError: Gradle properties file '{gradle_properties_file}' not found.\033[0m")
     except Exception as e:
         print(f"\033[31mError: An unexpected error occurred: {e}\033[0m")
-    return None
 
+    sys.exit()
 
 def get_new_konsist_version(release_option_num, old_version):
     """
@@ -84,7 +87,7 @@ def get_new_konsist_version(release_option_num, old_version):
 
     if not old_version:
         print(f"\033[31mError: Unable to determine old version.\033[0m")
-        return None
+        sys.exit()
 
     major_version, minor_version, patch_version = old_version.split('.')
 
@@ -94,10 +97,10 @@ def get_new_konsist_version(release_option_num, old_version):
         new_version = f"{major_version}.{minor_version}.{int(patch_version) + 1}"
     else:
         print(f"\033[31mError: Invalid release option number: {release_option_num}\033[0m")
-        return None
+        sys.exit()
 
+    print(f"\033[32mNew konsist version: {new_version}\033[0m")
     return new_version
-
 
 def change_branch_to_develop_and_and_merge_main():
     """
@@ -121,6 +124,7 @@ def change_branch_to_develop_and_and_merge_main():
 
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError: {e}\033[0m")
+        sys.exit()
 
 
 def check_for_uncommitted_changes():
@@ -177,7 +181,7 @@ def create_release_branch(version):
 
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError: {e}\033[0m")
-        return None
+        sys.exit()
 
 def replace_konsist_version(old_version, new_version, files):
     """
@@ -208,7 +212,7 @@ def replace_konsist_version(old_version, new_version, files):
     else:
         print(f"\033[32mNo changes made to files.\033[0m")
 
-def find_files_with_deprecated_annotation(directory, version):
+def check_if_exist_files_with_deprecated_annotation(directory, version):
     """
     Finds Kotlin files containing the @Deprecated annotation with the specified pattern.
 
@@ -229,7 +233,16 @@ def find_files_with_deprecated_annotation(directory, version):
                     if re.search(pattern, text):
                         files_with_deprecated_annotation.append(file_path)
 
-    return  files_with_deprecated_annotation
+    # Check if list of files with deprecated annotation is not empty
+    if files_with_deprecated_annotation:
+        print(f"\033[31mFiles contains @Deprecated annotation with {new_konsist_version} version:\033[0m")
+        for file in deprecated_files:
+            file_path = os.path.join(project_root, file)
+            display_clickable_file_paths(file_path)
+        print(f"\033[31mRemove deprecated declarations in the above files.\033[0m")
+        sys.exit()
+    else:
+        print(f"\033[32mNo files contains @Deprecated annotation with {new_konsist_version} version.\033[0m")
 
 def display_clickable_file_paths(file_path):
     # Construct the hyperlink URL
@@ -366,6 +379,7 @@ def create_pull_request_to_main(version):
 
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError: {e}\033[0m")
+        sys.exit()
 
 def get_latest_commit_sha(branch):
     """
@@ -381,13 +395,37 @@ def get_latest_commit_sha(branch):
 
         if result.returncode != 0:
             print(f"\033[31mError fetching latest commit SHA: {result.stderr}")
-            return None
+            sys.exit()
 
-        return result.stdout.strip()
+        latest_commit_sha = result.stdout.strip()
+        print(f"\033[32mLatest commit SHA: {latest_commit_sha}\033[0m")
+
+        print(f"\033[32mWait for running checks...\033[0m")
+        time.sleep(30)
+
+        # Execute if all GitHub checks have passed
+        while True:
+            # Check GitHub checks
+            check_statuses = check_github_checks(latest_commit_sha)
+
+            # Determine the status of the checks
+            if -1 in check_statuses:
+                print(f"\033[31mThe checks failed. Exiting script.\033[0m")
+                sys.exit()
+
+            if 0 in check_statuses:
+                print(f"\033[33mChecks in progress...\033[0m")
+                time.sleep(60)  # Wait a minute before checking again
+                continue
+
+            if all(status == 1 for status in check_statuses):
+                print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
+                # Add your script logic here
+                break  # Exit the loop if all checks passed
 
     except Exception as e:
         print(f"\033[31mAn error occurred while getting the latest commit SHA: {e}\033[0m")
-        return None
+        sys.exit()
 
 def check_github_checks(ref):
     """
@@ -449,11 +487,10 @@ def merge_release_pr(branch_name):
     # Merge the branch without squashing using GitHub CLI
     try:
         subprocess.check_call(["gh", "pr", "merge", branch_name, "--merge", "--delete-branch"])
+        print(f"\033[32mSuccessfully merged branch '{branch_name}'.\033[0m")
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError: Failed to merge branch '{branch_name}': {e}\033[0m")
-        return
-
-    print(f"\033[32mSuccessfully merged branch '{branch_name}'.\033[0m")
+        sys.exit()
 
 def generate_release_notes(tag_name):
     """
@@ -715,8 +752,10 @@ def update_version_in_konsist_documentation(repository, old_version, new_version
         return temp_dir
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError running Git command: {e}\033[0m")
+        sys.exit()
     except Exception as e:
         print(f"\033[31mAn error occurred: {e}\033[0m")
+        sys.exit()
     finally:
         # Cleanup: Remove the temporary directory
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -725,93 +764,37 @@ def update_snippets_in_konsist_documentation():
     from deploy_snippets_to_kotlin_documentation_repo import (deploy_snippets_to_kotlin_documentation_repo)
 
 def create_release():
-    chosen_option = 1  # remove!!!
-
     check_for_uncommitted_changes()
 
-    # chosen_option = choose_release_option()
-    print(f"\033[32mYou chose option: {chosen_option}\033[0m")
+    chosen_option = choose_release_option()
 
     change_branch_to_develop_and_and_merge_main()
 
     old_konsist_version = get_old_konsist_version()
-    print(f"\033[32mOld konsist version: {old_konsist_version}\033[0m")
-
-    # Check if old version is None
-    if old_konsist_version is None:
-        print(f"\033[31mError: Unable to determine old version from `gradle.properties`.\033[0m")
-        return
-
     new_konsist_version = get_new_konsist_version(chosen_option, old_konsist_version)
-    print(f"\033[32mNew konsist version: {new_konsist_version}\033[0m")
-
-    # Check if new version is None
-    if new_konsist_version is None:
-        print(f"\033[31mError: Unable to determine new version.\033[0m")
-        return
 
     check_for_uncommitted_changes()
 
-    # release_branch_title = create_release_branch(new_konsist_version)
-    #
-    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
-    #
-    # deprecated_files = find_files_with_deprecated_annotation(api_directory, new_konsist_version)
-    #
-    # # Check if list of files with deprecated annotation is not empty
-    # if deprecated_files:
-    #     print(f"\033[31mFiles contains @Deprecated annotation with {new_konsist_version} version:\033[0m")
-    #     for file in deprecated_files:
-    #         file_path = os.path.join(project_root, file)
-    #         display_clickable_file_paths(file_path)
-    #     print(f"\033[31mRemove deprecated declarations in the above files.\033[0m")
-    #     return
-    # else:
-    #     print(f"\033[32mNo files contains @Deprecated annotation with {new_konsist_version} version.\033[0m")
-    #
-    # test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
-    #
-    # create_pull_request_to_main(new_konsist_version)
-    #
-    # # Get latest commit SHA
-    # latest_commit_sha = get_latest_commit_sha(release_branch_title)
-    # print(f"\033[32mLatest commit SHA: {latest_commit_sha}\033[0m")
-    #
-    # print(f"\033[32mWait for running checks...\033[0m")
-    # time.sleep(30)
-    #
-    # ## Execute if all GitHub checks have passed
-    # # while True:
-    # #     if not latest_commit_sha:
-    # #         print(f"\033[31mError fetching commit SHA.\033[0m")
-    # #         break
-    # #
-    # #     # Check GitHub checks
-    # #     check_statuses = check_github_checks(latest_commit_sha)
-    # #
-    # #     # Determine the status of the checks
-    # #     if -1 in check_statuses:
-    # #         print(f"\033[31mThe checks failed. Exiting script.\033[0m")
-    # #         sys.exit()
-    # #
-    # #     if 0 in check_statuses:
-    # #         print(f"\033[33mChecks in progress...\033[0m")
-    # #         time.sleep(60)  # Wait a minute before checking again
-    # #         continue
-    # #
-    # #     if all(status == 1 for status in check_statuses):
-    # #         print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
-    # #         # Add your script logic here
-    # #         break  # Exit the loop if all checks passed
-    #
-    # merge_release_pr(release_branch_title)
-    #
-    # create_github_release(new_konsist_version)
-    #
-    # # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
-    #
-    # # update_snippets_in_konsist_documentation()
-    #
-    # change_branch_to_develop_and_and_merge_main()
+    release_branch_title = create_release_branch(new_konsist_version)
+
+    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+
+    check_if_exist_files_with_deprecated_annotation(api_directory, new_konsist_version)
+
+    test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
+
+    create_pull_request_to_main(new_konsist_version)
+
+    get_latest_commit_sha(release_branch_title)
+
+    merge_release_pr(release_branch_title)
+
+    create_github_release(new_konsist_version)
+
+    # update_version_in_konsist_documentation(konsist_documentation_repository_address, old_konsist_version, new_konsist_version)
+
+    # update_snippets_in_konsist_documentation()
+
+    change_branch_to_develop_and_and_merge_main()
 # Script ===============================================================================================================
 create_release()
