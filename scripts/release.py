@@ -778,7 +778,7 @@ def create_release():
     print(f"\033[32mWait for running checks...\033[0m")
     time.sleep(30)
 
-    # Execute if all GitHub checks have passed
+    ## Execute if all GitHub checks have passed
     # while True:
     #     if not latest_commit_sha:
     #         print(f"\033[31mError fetching commit SHA.\033[0m")
