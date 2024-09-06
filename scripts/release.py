@@ -374,12 +374,28 @@ def create_pull_request_to_main(version):
         # Push the current branch to the remote repository, setting the upstream branch if needed
         subprocess.run(["git", "push", "--set-upstream", "origin", "HEAD"], check=True)
 
-        # Create the pull request using the GitHub CLI
-        subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--body", "",  "--base", "main"], check=True)
+        # Get the current branch name
+        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=True)
+        current_branch = result.stdout.strip()
+
+        # Check if a pull request already exists from the current branch
+        pr_list_command = ["gh", "pr", "list", "--head", current_branch, "--json", "title"]
+        pr_list_result = subprocess.run(pr_list_command, capture_output=True, text=True, check=True)
+
+        # Parse the output to check for existing PRs
+        pr_list = json.loads(pr_list_result.stdout)
+
+        if pr_list:
+            # If a PR already exists, log the information
+            pr_title = pr_list[0]['title']
+            print(f"\033[32mPull request already exists from branch '{current_branch}': {pr_title}\033[0m")
+        else:
+            # If no PR exists, create a new one
+            print(f"\033[32mCreating a new pull request from branch '{current_branch}'...\033[0m")
+            subprocess.run(["gh", "pr", "create", "--title", f"Release/v{version}", "--body", "", "--base", "main"], check=True)
 
     except subprocess.CalledProcessError as e:
         print(f"\033[31mError: {e}\033[0m")
-        sys.exit()
 
 def get_latest_commit_sha(branch):
     """
