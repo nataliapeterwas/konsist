@@ -779,28 +779,28 @@ def create_release():
     time.sleep(30)
 
     # Execute if all GitHub checks have passed
-    while True:
-        if not latest_commit_sha:
-            print(f"\033[31mError fetching commit SHA.\033[0m")
-            break
-
-        # Check GitHub checks
-        check_statuses = check_github_checks(latest_commit_sha)
-
-        # Determine the status of the checks
-        if -1 in check_statuses:
-            print(f"\033[31mThe checks failed. Exiting script.\033[0m")
-            sys.exit()
-
-        if 0 in check_statuses:
-            print(f"\033[33mChecks in progress...\033[0m")
-            time.sleep(60)  # Wait a minute before checking again
-            continue
-
-        if all(status == 1 for status in check_statuses):
-            print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
-            # Add your script logic here
-            break  # Exit the loop if all checks passed
+    # while True:
+    #     if not latest_commit_sha:
+    #         print(f"\033[31mError fetching commit SHA.\033[0m")
+    #         break
+    #
+    #     # Check GitHub checks
+    #     check_statuses = check_github_checks(latest_commit_sha)
+    #
+    #     # Determine the status of the checks
+    #     if -1 in check_statuses:
+    #         print(f"\033[31mThe checks failed. Exiting script.\033[0m")
+    #         sys.exit()
+    #
+    #     if 0 in check_statuses:
+    #         print(f"\033[33mChecks in progress...\033[0m")
+    #         time.sleep(60)  # Wait a minute before checking again
+    #         continue
+    #
+    #     if all(status == 1 for status in check_statuses):
+    #         print(f"\033[32mAll checks passed. Continuing script execution.\033[0m")
+    #         # Add your script logic here
+    #         break  # Exit the loop if all checks passed
 
     merge_release_pr(release_branch_title)
 
