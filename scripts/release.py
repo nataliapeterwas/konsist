@@ -1,11 +1,11 @@
 import json
 import os
 import re
-import subprocess
-import tempfile
 import shutil
-import time
+import subprocess
 import sys
+import tempfile
+import time
 
 from common import (project_root)
 
