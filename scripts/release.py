@@ -235,14 +235,14 @@ def check_if_exist_files_with_deprecated_annotation(directory, version):
 
     # Check if list of files with deprecated annotation is not empty
     if files_with_deprecated_annotation:
-        print(f"\033[31mFiles contains @Deprecated annotation with {new_konsist_version} version:\033[0m")
-        for file in deprecated_files:
+        print(f"\033[31mFiles contains @Deprecated annotation with {version} version:\033[0m")
+        for file in files_with_deprecated_annotation:
             file_path = os.path.join(project_root, file)
             display_clickable_file_paths(file_path)
         print(f"\033[31mRemove deprecated declarations in the above files.\033[0m")
         sys.exit()
     else:
-        print(f"\033[32mNo files contains @Deprecated annotation with {new_konsist_version} version.\033[0m")
+        print(f"\033[32mNo files contains @Deprecated annotation with {version} version.\033[0m")
 
 def display_clickable_file_paths(file_path):
     # Construct the hyperlink URL
@@ -776,15 +776,16 @@ def create_release():
 
     # check_for_uncommitted_changes()
     #
-    release_branch_title = create_release_branch(new_konsist_version)
+    # release_branch_title = create_release_branch(new_konsist_version)
     #
-    replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
+    # replace_konsist_version(old_konsist_version, new_konsist_version, files_with_version_to_change)
     #
     # check_if_exist_files_with_deprecated_annotation(api_directory, new_konsist_version)
     #
     # test_3rd_party_projects_using_local_artifacts(old_konsist_version, new_konsist_version)
     #
-    # create_pull_request_to_main(new_konsist_version)
+    create_pull_request_to_main(new_konsist_version)
+    print("Test")
     #
     # get_latest_commit_sha(release_branch_title)
     #
