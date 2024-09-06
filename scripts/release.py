@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import shutil
 import time
+import sys
 
 from common import (project_root)
 
