@@ -376,7 +376,7 @@ def copy_content(expanded_source_directory, expanded_destination_directory, summ
                             print(f"Error copying content: {e}")
 
 
-def push_changes():
+def push_changes(branch_name):
     subprocess.run(["git", "add", "."], check=True)
     subprocess.run(["git", "commit", "-m", "Upd snippet code at docs"], check=True)
     subprocess.run(["git", "push", "origin", branch_name], check=True)
@@ -433,7 +433,7 @@ def cleanup_temp_directory(temp_dir):
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def main(branch):
+def deploy_snippets_to_kotlin_documentation_repo():
     try:
         # Take a source directory
         project_root = get_project_root()
@@ -448,7 +448,8 @@ def main(branch):
         # Fetch remote branches
         fetch_remote_branches(temp_dir)
 
-        if not create_or_checkout_git_branch(branch, temp_dir):
+        branch_name = get_current_date() + "-update-snippet-code"
+        if not create_or_checkout_git_branch(branch_name, temp_dir):
             return None
 
         destination_snippets_directory = os.path.expanduser(temp_dir + "/inspiration/snippets")
@@ -462,21 +463,17 @@ def main(branch):
 
         os.chdir(temp_dir)
 
-        push_changes()
+        push_changes(branch_name)
 
         create_and_merge_pr()
 
-        return temp_dir
+        # Cleanup: Remove the temporary directory
+        cleanup_temp_directory(temp_dir)
     except subprocess.CalledProcessError as e:
         print(f"Error running Git command: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
-    finally:
-        # Cleanup: Remove the temporary directory
-        cleanup_temp_directory(temp_dir)
 
 
 # Script ===============================================================================================================
-branch_name = get_current_date() + "-update-snippet-code"
-
-main(branch_name)
+deploy_snippets_to_kotlin_documentation_repo()
