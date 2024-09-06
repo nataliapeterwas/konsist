@@ -745,7 +745,7 @@ def create_release():
 
     if check_for_uncommitted_changes():
         print(f"\033[31mError: There are uncommitted changes. Please commit or stash them before merging.\033[0m")
-        return
+        # return
     else:
         print(f"\033[32mThere are no uncommitted changes. Script continues...\033[0m")
 
