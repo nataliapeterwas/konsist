@@ -259,7 +259,7 @@ def test_3rd_party_projects_using_local_artifacts(old_version, new_version):
         # if "android-showcase" in repo_name:
         #     gradle_command = ['./gradlew', 'konsist_test:test', '--rerun-tasks']
         #     run_gradle_task(project_path, gradle_command)
-        #
+
         # if "CleanArchitectureForAndroid" in repo_name:
         #     gradle_command = ['./gradlew', 'test', '--no-daemon']
         #     run_gradle_task(project_path, gradle_command)
